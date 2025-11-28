@@ -14,13 +14,15 @@ const deviceSchema = new mongoose.Schema({
             isAuto: Boolean,
             temperature: Number,
             humidity: Number,
+            timerExpiresAt: Date,
             lastUpdatedAt: Date
         },
         desired: {
             isOn: Boolean,
             speed: Number,
             isRotating: Boolean,
-            isAuto: Boolean
+            isAuto: Boolean,
+            timerExpiresAt: Date
         }
     },
     lastSeen: Date

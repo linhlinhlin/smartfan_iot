@@ -4,6 +4,9 @@ import 'screens/dashboard_screen.dart';
 import 'providers/fan_provider.dart';
 import 'features/smart_fan/data/repositories/fan_repository_nodejs_impl.dart';
 
+// Toggle này để switch giữa local và cloud backend
+const bool useLocalBackend = true; // Đổi thành false để dùng cloud
+
 void main() {
   runApp(const SmartFanApp());
 }
@@ -13,14 +16,22 @@ class SmartFanApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Local: http://localhost:3000 (web/desktop) hoặc http://10.0.2.2:3000 (Android emulator)
+    // Cloud: https://smartfan-iot.onrender.com
+    final baseUrl = useLocalBackend 
+        ? 'http://localhost:3000/api'  // Dùng localhost cho web/desktop
+        : 'https://smartfan-iot.onrender.com/api';
+    final socketUrl = useLocalBackend 
+        ? 'http://localhost:3000'
+        : 'https://smartfan-iot.onrender.com';
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
           create: (_) => FanNotifier(
-            // Sử dụng Backend trên Cloud (Render)
             repository: NodeJsFanRepositoryImpl(
-              baseUrl: 'https://smartfan-iot.onrender.com/api',
-              socketUrl: 'https://smartfan-iot.onrender.com',
+              baseUrl: baseUrl,
+              socketUrl: socketUrl,
             ),
           ),
         ),

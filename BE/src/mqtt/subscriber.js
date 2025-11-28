@@ -43,12 +43,18 @@ module.exports = (io) => {
                 lastUpdatedAt: new Date()
             };
 
-            // Update Device Shadow (Reported State)
-            await Device.findOneAndUpdate(
+            // Update Device Shadow (Reported State) and get updated document
+            const updatedDevice = await Device.findOneAndUpdate(
                 { deviceId },
                 {
                     $set: {
-                        "state.reported": cleanData,
+                        "state.reported.isOn": cleanData.isOn,
+                        "state.reported.speed": cleanData.speed,
+                        "state.reported.isRotating": cleanData.isRotating,
+                        "state.reported.isAuto": cleanData.isAuto,
+                        "state.reported.temperature": cleanData.temperature,
+                        "state.reported.humidity": cleanData.humidity,
+                        "state.reported.lastUpdatedAt": cleanData.lastUpdatedAt,
                         lastSeen: new Date()
                     }
                 },
@@ -62,8 +68,14 @@ module.exports = (io) => {
                 timestamp: Date.now()
             });
 
+            // Include timerExpiresAt from DB in socket emission for multi-device sync
+            const socketData = {
+                ...cleanData,
+                timerExpiresAt: updatedDevice?.state?.reported?.timerExpiresAt || null
+            };
+
             // Emit to Socket.IO (Realtime to App)
-            io.to(`device_${deviceId}`).emit("device_update", cleanData);
+            io.to(`device_${deviceId}`).emit("device_update", socketData);
 
         } catch (error) {
             console.error("MQTT Message Error:", error);

@@ -5,6 +5,7 @@ class FanEntity {
   final bool isAuto;
   final double temperature;
   final double humidity;
+  final DateTime? timerExpiresAt;
 
   const FanEntity({
     required this.isOn,
@@ -13,6 +14,7 @@ class FanEntity {
     required this.isAuto,
     required this.temperature,
     this.humidity = 0.0,
+    this.timerExpiresAt,
   });
   
   // Helper để copyWith (tiện cho việc update state cục bộ nếu cần)
@@ -22,7 +24,8 @@ class FanEntity {
     bool? isRotating,
     bool? isAuto,
     double? temperature, 
-    double? humidity
+    double? humidity,
+    DateTime? timerExpiresAt,
   }) {
     return FanEntity(
       isOn: isOn ?? this.isOn,
@@ -31,6 +34,7 @@ class FanEntity {
       isAuto: isAuto ?? this.isAuto,
       temperature: temperature ?? this.temperature,
       humidity: humidity ?? this.humidity,
+      timerExpiresAt: timerExpiresAt ?? this.timerExpiresAt,
     );
   }
 }

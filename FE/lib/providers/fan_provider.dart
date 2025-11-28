@@ -48,6 +48,7 @@ class FanNotifier extends ChangeNotifier {
       temperature: entity.temperature,
       humidity: entity.humidity.toInt(),
       lastSeenMs: DateTime.now().millisecondsSinceEpoch,
+      timerExpiresAt: entity.timerExpiresAt,
     );
   }
 
@@ -57,7 +58,21 @@ class FanNotifier extends ChangeNotifier {
     
     switch (type) {
       case 'power':
-        _state = _state.copyWith(power: value);
+        if (value == 0) {
+          // When turning off, also clear timer
+          _state = FanState(
+            power: 0,
+            mode: _state.mode,
+            rotate: _state.rotate,
+            auto: _state.auto,
+            temperature: _state.temperature,
+            humidity: _state.humidity,
+            lastSeenMs: _state.lastSeenMs,
+            timerExpiresAt: null,
+          );
+        } else {
+          _state = _state.copyWith(power: value);
+        }
         break;
       case 'mode':
         _state = _state.copyWith(mode: value);
@@ -95,6 +110,47 @@ class FanNotifier extends ChangeNotifier {
       _state = previousState;
       _errorMessage = (result as Failure).message;
       debugPrint('Command Error: $_errorMessage');
+      notifyListeners();
+    }
+  }
+
+  /// Send timer command to set or cancel timer
+  /// [minutes] - Timer duration in minutes. Use 0 to cancel timer.
+  Future<void> sendTimerCommand(int minutes) async {
+    debugPrint('[FanNotifier] sendTimerCommand called with minutes: $minutes');
+    
+    // Optimistic Update: Calculate expected expiresAt
+    final previousState = _state;
+    
+    if (minutes > 0) {
+      final expiresAt = DateTime.now().add(Duration(minutes: minutes));
+      _state = _state.copyWith(timerExpiresAt: expiresAt);
+      debugPrint('[FanNotifier] Timer set to expire at: $expiresAt');
+    } else {
+      // Cancel timer - set to null by creating new state without timerExpiresAt
+      _state = FanState(
+        power: _state.power,
+        mode: _state.mode,
+        rotate: _state.rotate,
+        auto: _state.auto,
+        temperature: _state.temperature,
+        humidity: _state.humidity,
+        lastSeenMs: _state.lastSeenMs,
+        timerExpiresAt: null,
+      );
+      debugPrint('[FanNotifier] Timer cancelled');
+    }
+    notifyListeners();
+
+    debugPrint('[FanNotifier] Sending timer command to repository...');
+    final result = await _repository.sendCommand(timerMinutes: minutes);
+    debugPrint('[FanNotifier] Repository result: $result');
+
+    if (result is Failure) {
+      // Rollback nếu lỗi
+      _state = previousState;
+      _errorMessage = (result as Failure).message;
+      debugPrint('[FanNotifier] Timer Command Error: $_errorMessage');
       notifyListeners();
     }
   }

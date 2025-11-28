@@ -11,6 +11,7 @@ abstract class IFanRepository {
     int? speed,
     bool? isRotating,
     bool? isAuto,
+    int? timerMinutes,
   });
 
   // Stream realtime (Quan trọng: Stream trả về Result để UI handle cả lỗi trong lúc stream)

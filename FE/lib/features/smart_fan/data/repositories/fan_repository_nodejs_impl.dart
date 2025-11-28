@@ -61,6 +61,7 @@ class NodeJsFanRepositoryImpl implements IFanRepository {
     int? speed,
     bool? isRotating,
     bool? isAuto,
+    int? timerMinutes,
   }) async {
     try {
       // Helper to send individual command
@@ -79,10 +80,26 @@ class NodeJsFanRepositoryImpl implements IFanRepository {
         }
       }
 
-      if (isOn != null) await send('POWER', isOn ? 1 : 0);
-      if (speed != null) await send('MODE', speed);
-      if (isRotating != null) await send('ROTATION', isRotating ? 1 : 0);
-      if (isAuto != null) await send('AUTO', isAuto ? 1 : 0);
+      if (isOn != null) {
+        print('[Repository] Sending POWER: ${isOn ? 1 : 0}');
+        await send('POWER', isOn ? 1 : 0);
+      }
+      if (speed != null) {
+        print('[Repository] Sending MODE: $speed');
+        await send('MODE', speed);
+      }
+      if (isRotating != null) {
+        print('[Repository] Sending ROTATION: ${isRotating ? 1 : 0}');
+        await send('ROTATION', isRotating ? 1 : 0);
+      }
+      if (isAuto != null) {
+        print('[Repository] Sending AUTO: ${isAuto ? 1 : 0}');
+        await send('AUTO', isAuto ? 1 : 0);
+      }
+      if (timerMinutes != null) {
+        print('[Repository] Sending TIMER: $timerMinutes');
+        await send('TIMER', timerMinutes);
+      }
 
       return const Success(null);
     } catch (e) {

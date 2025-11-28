@@ -8,6 +8,7 @@ class FanModel extends FanEntity {
     required super.isAuto,
     required super.temperature,
     super.humidity,
+    super.timerExpiresAt,
   });
 
   // 1. Factory cho Firebase (Legacy keys)
@@ -17,6 +18,15 @@ class FanModel extends FanEntity {
       if (val == null) return 0.0;
       if (val is int) return val.toDouble();
       return val as double;
+    }
+
+    // Helper to parse ISO 8601 timestamp string to DateTime
+    DateTime? parseDateTime(dynamic val) {
+      if (val == null) return null;
+      if (val is String) {
+        return DateTime.tryParse(val);
+      }
+      return null;
     }
 
     return FanModel(
@@ -29,11 +39,21 @@ class FanModel extends FanEntity {
       isAuto: map['che_do'] == 'tu_dong' || map['auto'] == 1,
       temperature: parseDouble(map['nhiet_do']),
       humidity: parseDouble(map['do_am']),
+      timerExpiresAt: parseDateTime(map['timerExpiresAt']),
     );
   }
 
   // 2. Factory cho Node.js (Future Standard)
   factory FanModel.fromJson(Map<String, dynamic> json) {
+    // Helper to parse ISO 8601 timestamp string to DateTime
+    DateTime? parseDateTime(dynamic val) {
+      if (val == null) return null;
+      if (val is String) {
+        return DateTime.tryParse(val);
+      }
+      return null;
+    }
+
     return FanModel(
       isOn: json['isOn'] ?? false,
       speed: json['speed'] ?? 0,
@@ -41,6 +61,7 @@ class FanModel extends FanEntity {
       isAuto: json['isAuto'] ?? false,
       temperature: (json['temperature'] as num?)?.toDouble() ?? 0.0,
       humidity: (json['humidity'] as num?)?.toDouble() ?? 0.0,
+      timerExpiresAt: parseDateTime(json['timerExpiresAt']),
     );
   }
 }

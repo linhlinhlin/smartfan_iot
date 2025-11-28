@@ -5,8 +5,8 @@ import '../widgets/cosmic_background.dart';
 import '../widgets/status_chip.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/hero_power_button.dart';
-import '../widgets/mode_segmented.dart';
-import '../widgets/toggle_row.dart';
+import '../widgets/control_button.dart';
+import '../widgets/timer_picker_dialog.dart';
 import '../theme.dart';
 
 const deviceId = 'quat_thong_minh_2';
@@ -23,11 +23,35 @@ class DashboardScreen extends StatelessWidget {
     return 'Cập nhật $minutes phút trước';
   }
 
+  void _showTimerPicker(BuildContext context, FanNotifier fanNotifier, int currentMinutes) {
+    debugPrint('[Dashboard] Opening timer picker with currentMinutes: $currentMinutes');
+    showDialog(
+      context: context,
+      builder: (dialogContext) => TimerPickerDialog(
+        initialMinutes: currentMinutes,
+        onConfirm: (minutes) {
+          debugPrint('[Dashboard] Timer confirmed: $minutes minutes');
+          fanNotifier.sendTimerCommand(minutes);
+        },
+      ),
+    );
+  }
+
+  int _calculateRemainingMinutes(DateTime? expiresAt) {
+    if (expiresAt == null) return 0;
+    final remaining = expiresAt.difference(DateTime.now());
+    if (remaining.isNegative) return 0;
+    return remaining.inMinutes;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<FanNotifier>(
       builder: (context, fanNotifier, child) {
         final fanState = fanNotifier.state;
+        final isOn = fanState.power == 1;
+        final timerMinutes = _calculateRemainingMinutes(fanState.timerExpiresAt);
+        final hasTimer = isOn && timerMinutes > 0;
 
         return CosmicBackground(
           child: Scaffold(
@@ -39,130 +63,111 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(width: 16),
               ],
             ),
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Sensor Cards
-                  Row(
-                    children: [
-                      StatCard(
-                        title: 'Nhiệt độ',
-                        value: fanState.temperature?.toStringAsFixed(1) ?? '--',
-                        unit: '°C',
-                        subtitle: _formatLastSeen(fanState.lastSeenMs),
-                        icon: Icons.thermostat,
-                      ),
-                      const SizedBox(width: 12),
-                      StatCard(
-                        title: 'Độ ẩm',
-                        value: fanState.humidity?.toString() ?? '--',
-                        unit: '%',
-                        subtitle: 'Ổn định',
-                        icon: Icons.water_drop,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  // Hero Power Button - Central Focus
-                  Center(
-                    child: HeroPowerButton(
-                      isOn: fanState.power == 1,
-                      currentSpeed: fanState.power == 1 ? (fanState.mode ?? 0) + 1 : 0,
-                      isLoading: fanNotifier.isLoading,
-                      onPressed: () => fanNotifier.sendCommand('power', fanState.power == 1 ? 0 : 1),
+            body: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Column(
+                  children: [
+                    // Sensor Cards Row
+                    Row(
+                      children: [
+                        StatCard(
+                          title: 'Nhiệt độ',
+                          value: fanState.temperature?.toStringAsFixed(1) ?? '--',
+                          unit: '°C',
+                          subtitle: _formatLastSeen(fanState.lastSeenMs),
+                          icon: Icons.thermostat,
+                        ),
+                        const SizedBox(width: 12),
+                        StatCard(
+                          title: 'Độ ẩm',
+                          value: fanState.humidity?.toString() ?? '--',
+                          unit: '%',
+                          subtitle: 'Ổn định',
+                          icon: Icons.water_drop,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Text(
-                      fanState.power == 1 ? 'Quạt đang hoạt động' : 'Quạt đã tắt',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: fanState.power == 1 ? AppTheme.iceBlueAccent : AppTheme.graphite500,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  // Secondary Controls Card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Điều khiển nâng cao',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                          const SizedBox(height: 20),
-                          // Mode Segmented
-                          Text(
-                            'Tốc độ',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          ModeSegmented(
-                            selectedMode: fanState.mode,
-                            isEnabled: fanState.auto != 1 && !fanNotifier.isLoading,
-                            onModeChanged: (mode) => fanNotifier.sendCommand('mode', mode),
-                          ),
-                          if (fanState.auto == 1)
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppTheme.iceBlueAccent.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(AppTheme.chipRadius),
-                                border: Border.all(
-                                  color: AppTheme.iceBlueAccent.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                'Chế độ tự động đang bật - tốc độ có thể được điều chỉnh tự động',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppTheme.iceBlueAccent,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                textAlign: TextAlign.center,
-                              ),
+
+                    const Spacer(),
+
+                    // Main Controls Section
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Power Button with timer ring
+                        HeroPowerButton(
+                          currentSpeed: isOn ? (fanState.mode ?? 0) + 1 : 0,
+                          isLoading: fanNotifier.isLoading,
+                          timerExpiresAt: isOn ? fanState.timerExpiresAt : null,
+                          timerTotalMinutes: timerMinutes > 0 ? timerMinutes + 1 : null,
+                          onSpeedChanged: (newSpeed) {
+                            if (newSpeed == 0) {
+                              fanNotifier.sendCommand('power', 0);
+                            } else {
+                              if (!isOn) {
+                                fanNotifier.sendCommand('power', 1);
+                              }
+                              fanNotifier.sendCommand('mode', newSpeed - 1);
+                            }
+                          },
+                          onLongPress: () => fanNotifier.sendCommand('power', 0),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Secondary Control Buttons Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Timer Button - disabled when OFF
+                            ControlButton(
+                              icon: hasTimer ? Icons.timer : Icons.timer_outlined,
+                              label: 'Hẹn giờ',
+                              isActive: hasTimer,
+                              isEnabled: isOn && !fanNotifier.isLoading,
+                              onTap: () => _showTimerPicker(context, fanNotifier, timerMinutes),
+                              onLongPress: hasTimer ? () => fanNotifier.sendTimerCommand(0) : null,
                             ),
-                          const SizedBox(height: 20),
-                          // Toggles
-                          ToggleRow(
-                            label: '↻ Xoay',
-                            value: fanState.rotate == 1,
-                            isEnabled: !fanNotifier.isLoading,
-                            onChanged: (value) => fanNotifier.sendCommand('rotate', value ? 1 : 0),
-                          ),
-                          const SizedBox(height: 12),
-                          ToggleRow(
-                            label: 'A Tự động',
-                            value: fanState.auto == 1,
-                            isEnabled: !fanNotifier.isLoading,
-                            onChanged: (value) => fanNotifier.sendCommand('auto', value ? 1 : 0),
-                          ),
-                        ],
-                      ),
+
+                            const SizedBox(width: 24),
+
+                            // Rotate Button - disabled when OFF
+                            ControlButton(
+                              icon: Icons.sync,
+                              label: 'Xoay',
+                              isActive: fanState.rotate == 1,
+                              isEnabled: isOn && !fanNotifier.isLoading,
+                              onTap: () => fanNotifier.sendCommand('rotate', fanState.rotate == 1 ? 0 : 1),
+                            ),
+
+                            const SizedBox(width: 24),
+
+                            // Auto Button - disabled when OFF
+                            ControlButton(
+                              icon: Icons.auto_mode,
+                              label: 'Tự động',
+                              isActive: fanState.auto == 1,
+                              isEnabled: isOn && !fanNotifier.isLoading,
+                              onTap: () => fanNotifier.sendCommand('auto', fanState.auto == 1 ? 0 : 1),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Last updated
-                  Center(
-                    child: Text(
+
+                    const Spacer(),
+
+                    // Footer
+                    Text(
                       _formatLastSeen(fanState.lastSeenMs),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.graphite500,
-                          ),
+                        color: AppTheme.graphite500,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
             ),
             floatingActionButton: FloatingActionButton(
